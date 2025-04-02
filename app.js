@@ -1,52 +1,51 @@
+// const Moralis = require("moralis");
 const express = require("express");
 const logger = require("morgan");
 const cors = require("cors");
 require("dotenv").config();
+// const { SolNetwork } = require("@moralisweb3/common-sol-utils");
 
 const axios = require("axios");
 
-const wallets = require("./wallets.json").wallets;
+// const getUserPortfolio = async () => {
+//   try {
+//     await Moralis.default.start({
+//       apiKey:
+//         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQ2NDg5ZmY4LTZlNDQtNDFlNy04OWFhLTA4NGVhZTk4ZmRlZSIsIm9yZ0lkIjoiNDM5Mjc4IiwidXNlcklkIjoiNDUxOTI2IiwidHlwZSI6IlBST0pFQ1QiLCJ0eXBlSWQiOiIwYjIzZTI2MC05YzhjLTQ2YjYtOGFmNC1mMTRlZmRhMDRiNTMiLCJpYXQiOjE3NDM1OTY2NTksImV4cCI6NDg5OTM1NjY1OX0._wdi7pWiOpdXppmHN9kmU9cgbC-wnjl2xqKmgofg9S8",
+//     });
 
-const ETHERSCAN_API = process.env.ETHERSCAN_API;
+//     const response = await Moralis.default.SolApi.account.getSPL({
+//       network: "mainnet",
+//       address: "u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w",
+//     });
 
-async function getTransactions(wallet) {
-  const url = `https://api.etherscan.io/api?module=account&action=txlist&address=${wallet}&apikey=${ETHERSCAN_API}`;
+//     console.log(response.raw);
+//   } catch (e) {
+//     console.error(e);
+//   }
+// };
 
-  const response = await axios.get(url);
+// a();
 
-  return response.data.result;
-}
+const getUserSwaps = async () => {
+  const options = {
+    method: "GET",
+    headers: {
+      "content-type": "application/json",
+      "X-API-Key":
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQ2NDg5ZmY4LTZlNDQtNDFlNy04OWFhLTA4NGVhZTk4ZmRlZSIsIm9yZ0lkIjoiNDM5Mjc4IiwidXNlcklkIjoiNDUxOTI2IiwidHlwZSI6IlBST0pFQ1QiLCJ0eXBlSWQiOiIwYjIzZTI2MC05YzhjLTQ2YjYtOGFmNC1mMTRlZmRhMDRiNTMiLCJpYXQiOjE3NDM1OTY2NTksImV4cCI6NDg5OTM1NjY1OX0._wdi7pWiOpdXppmHN9kmU9cgbC-wnjl2xqKmgofg9S8",
+    },
+  };
 
-async function monitorWallets() {
-  let a;
-  for (const wallet of wallets) {
-    const transactions = await getTransactions(wallet);
+  axios
+    .get(
+      "https://solana-gateway.moralis.io/account/mainnet/u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w/swaps?order=DESC",
+      options
+    )
+    .then((response) => console.log(response));
+};
 
-    for (const tx of transactions) {
-      a = analyzeTransaction(tx);
-      console.log(a);
-    }
-  }
-}
-
-monitorWallets();
-
-async function analyzeTransaction(tx) {
-  if (
-    tx.to.toLowerCase() ===
-    "0xE592427A0AEce92De3Edee1F18E0157C05861564".toLowerCase()
-  ) {
-    console.log(`Кит купил токен через Uniswap: ${tx.hash}`);
-
-    return tx;
-  }
-
-  return 123;
-}
-
-// setInterval(monitorWallets, 3000);
-
-// const router = require("./routes/api/");
+getUserSwaps();
 
 const app = express();
 

@@ -9,13 +9,14 @@
     "lint:fix": "eslint --fix **/*.js"
   },
   "dependencies": {
+    "@moralisweb3/common-evm-utils": "^2.27.2",
     "axios": "^1.8.4",
     "ccxt": "^4.4.71",
     "cors": "2.8.5",
     "cross-env": "7.0.3",
     "dotenv": "^16.4.7",
-    "ethers": "^6.13.5",
     "express": "4.17.1",
+    "moralis": "^2.27.2",
     "morgan": "1.10.0",
     "telegraf": "^4.16.3"
   },
