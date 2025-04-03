@@ -1,4 +1,4 @@
-// const Moralis = require("moralis");
+// const moralis = require("moralis");
 const express = require("express");
 const logger = require("morgan");
 const cors = require("cors");
@@ -9,40 +9,37 @@ const axios = require("axios");
 
 // const getUserPortfolio = async () => {
 //   try {
-//     await Moralis.default.start({
+//     await moralis.default.start({
 //       apiKey:
 //         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQ2NDg5ZmY4LTZlNDQtNDFlNy04OWFhLTA4NGVhZTk4ZmRlZSIsIm9yZ0lkIjoiNDM5Mjc4IiwidXNlcklkIjoiNDUxOTI2IiwidHlwZSI6IlBST0pFQ1QiLCJ0eXBlSWQiOiIwYjIzZTI2MC05YzhjLTQ2YjYtOGFmNC1mMTRlZmRhMDRiNTMiLCJpYXQiOjE3NDM1OTY2NTksImV4cCI6NDg5OTM1NjY1OX0._wdi7pWiOpdXppmHN9kmU9cgbC-wnjl2xqKmgofg9S8",
 //     });
 
-//     const response = await Moralis.default.SolApi.account.getSPL({
+//     const response = await moralis.default.SolApi.account.getSPL({
 //       network: "mainnet",
 //       address: "u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w",
 //     });
-
-//     console.log(response.raw);
+//     console.log(response.jsonResponse);
 //   } catch (e) {
 //     console.error(e);
 //   }
 // };
-
-// a();
+// getUserPortfolio();
 
 const getUserSwaps = async () => {
-  const options = {
-    method: "GET",
-    headers: {
-      "content-type": "application/json",
-      "X-API-Key":
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQ2NDg5ZmY4LTZlNDQtNDFlNy04OWFhLTA4NGVhZTk4ZmRlZSIsIm9yZ0lkIjoiNDM5Mjc4IiwidXNlcklkIjoiNDUxOTI2IiwidHlwZSI6IlBST0pFQ1QiLCJ0eXBlSWQiOiIwYjIzZTI2MC05YzhjLTQ2YjYtOGFmNC1mMTRlZmRhMDRiNTMiLCJpYXQiOjE3NDM1OTY2NTksImV4cCI6NDg5OTM1NjY1OX0._wdi7pWiOpdXppmHN9kmU9cgbC-wnjl2xqKmgofg9S8",
-    },
-  };
-
   axios
     .get(
       "https://solana-gateway.moralis.io/account/mainnet/u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w/swaps?order=DESC",
-      options
+      {
+        method: "GET",
+        headers: {
+          "content-type": "application/json",
+          "X-API-Key":
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQ2NDg5ZmY4LTZlNDQtNDFlNy04OWFhLTA4NGVhZTk4ZmRlZSIsIm9yZ0lkIjoiNDM5Mjc4IiwidXNlcklkIjoiNDUxOTI2IiwidHlwZSI6IlBST0pFQ1QiLCJ0eXBlSWQiOiIwYjIzZTI2MC05YzhjLTQ2YjYtOGFmNC1mMTRlZmRhMDRiNTMiLCJpYXQiOjE3NDM1OTY2NTksImV4cCI6NDg5OTM1NjY1OX0._wdi7pWiOpdXppmHN9kmU9cgbC-wnjl2xqKmgofg9S8",
+        },
+      }
     )
-    .then((response) => console.log(response));
+    .then((response) => console.log(response.data))
+    .catch((e) => console.error(e));
 };
 
 getUserSwaps();
@@ -62,7 +59,7 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  res.status(500).json({ message: err.message });
+  res.status(err.status || 500).json({ message: err.message });
 });
 
 module.exports = app;
