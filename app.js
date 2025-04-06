@@ -4,7 +4,6 @@ const logger = require("morgan");
 const cors = require("cors");
 require("dotenv").config();
 // const { SolNetwork } = require("@moralisweb3/common-sol-utils");
-
 const axios = require("axios");
 
 // const getUserPortfolio = async () => {
@@ -27,18 +26,17 @@ const axios = require("axios");
 
 const getUserSwaps = async () => {
   axios
-    .get(
-      "https://solana-gateway.moralis.io/account/mainnet/u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w/swaps?order=DESC",
-      {
-        method: "GET",
-        headers: {
-          "content-type": "application/json",
-          "X-API-Key":
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjQ2NDg5ZmY4LTZlNDQtNDFlNy04OWFhLTA4NGVhZTk4ZmRlZSIsIm9yZ0lkIjoiNDM5Mjc4IiwidXNlcklkIjoiNDUxOTI2IiwidHlwZSI6IlBST0pFQ1QiLCJ0eXBlSWQiOiIwYjIzZTI2MC05YzhjLTQ2YjYtOGFmNC1mMTRlZmRhMDRiNTMiLCJpYXQiOjE3NDM1OTY2NTksImV4cCI6NDg5OTM1NjY1OX0._wdi7pWiOpdXppmHN9kmU9cgbC-wnjl2xqKmgofg9S8",
-        },
-      }
-    )
-    .then((response) => console.log(response.data))
+    .get(process.env.MAINET_URL, {
+      method: "GET",
+      headers: {
+        "content-type": "application/json",
+        "X-API-Key": process.env.MAINNET_API,
+      },
+    })
+    .then((response) => {
+      const swaps = response.data.result;
+      console.log(swaps[0]);
+    })
     .catch((e) => console.error(e));
 };
 

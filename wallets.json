@@ -1,5 +1,7 @@
 {
-  "wallets": {
-    "wallet1": "0xe553e4562ff6b97b69f3189c8c528cf0ac5acc7f"
-  }
+  "wallets": [
+    "DfMxre4cKmvogbLrPigxmibVTTQDuzjdXojWzjCXXhzj",
+    "71CPXu3TvH3iUKaY1bNkAAow24k6tjH473SsKprQBABC",
+    "AbcX4XBm7DJ3i9p29i6sU8WLmiW4FWY5tiwB9D6UBbcE"
+  ]
 }
