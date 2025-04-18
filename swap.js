@@ -21,9 +21,9 @@ const tokenMintAddress = new PublicKey(
 ); // Адрес токена USDC
 
 const a = async () => {
-  const solBalanceLamports = await connection.getBalance(KEY);
-  const solBalance = solBalanceLamports / LAMPORTS_PER_SOL;
-  console.log(`Баланс SOL: ${solBalance} SOL`);
+  // const solBalanceLamports = await connection.getBalance(KEY);
+  // const solBalance = solBalanceLamports / LAMPORTS_PER_SOL;
+  // console.log(`Баланс SOL: ${solBalance} SOL`);
   //   const tokenAccounts = await connection.getTokenAccountsByOwner(
   //     process.env.PUBLIC,
   //     { mint: tokenMintAddress }

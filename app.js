@@ -3,24 +3,38 @@ const logger = require("morgan");
 const cors = require("cors");
 require("dotenv").config();
 const axios = require("axios");
+let num = 0;
+let lastSwapId = null;
+const getUserSwaps = async () => {
+  axios
+    .get(process.env.MAINET_URL, {
+      method: "GET",
+      headers: {
+        "content-type": "application/json",
+        "X-API-Key": process.env.MAINNET_API,
+      },
+    })
+    .then((response) => {
+      const swaps = response.data.result;
 
-// const getUserSwaps = async () => {
-//   axios
-//     .get(process.env.MAINET_URL, {
-//       method: "GET",
-//       headers: {
-//         "content-type": "application/json",
-//         "X-API-Key": process.env.MAINNET_API,
-//       },
-//     })
-//     .then((response) => {
-//       const swaps = response.data.result;
-//       console.log(swaps[0]);
-//     })
-//     .catch((e) => console.error(e));
-// };
+      if (swaps && swaps.length > 0) {
+        const currentSwap = swaps[0];
 
-// getUserSwaps();
+        if (currentSwap.transactionHash !== lastSwapId) {
+          console.log(currentSwap);
+          console.log("Новая сделка", num++);
+          lastSwapId = currentSwap.transactionHash;
+        } else {
+          console.log("Сделка не изменилась");
+        }
+      } else {
+        console.log("Нет сделок");
+      }
+    })
+    .catch((e) => console.error(e));
+};
+
+setInterval(getUserSwaps, 10000);
 
 const app = express();
 
