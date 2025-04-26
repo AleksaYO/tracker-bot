@@ -24,17 +24,17 @@ const a = async () => {
   // const solBalanceLamports = await connection.getBalance(KEY);
   // const solBalance = solBalanceLamports / LAMPORTS_PER_SOL;
   // console.log(`Баланс SOL: ${solBalance} SOL`);
-  //   const tokenAccounts = await connection.getTokenAccountsByOwner(
-  //     process.env.PUBLIC,
-  //     { mint: tokenMintAddress }
-  //   );
-  //   if (tokenAccounts.value.length > 0) {
-  //     const usdcAccount = tokenAccounts.value[0];
-  //     const balance = usdcAccount.account.data.parsed.info.tokenAmount.uiAmount;
-  //     console.log(`Баланс USDC: ${balance}`);
-  //   } else {
-  //     console.log("Нет аккаунтов для USDC на кошельке.");
-  //   }
+  // const tokenAccounts = await connection.getTokenAccountsByOwner(
+  //   process.env.PUBLIC,
+  //   { mint: tokenMintAddress }
+  // );
+  // if (tokenAccounts.value.length > 0) {
+  //   const usdcAccount = tokenAccounts.value[0];
+  //   const balance = usdcAccount.account.data.parsed.info.tokenAmount.uiAmount;
+  //   console.log(`Баланс USDC: ${balance}`);
+  // } else {
+  //   console.log("Нет аккаунтов для USDC на кошельке.");
+  // }
 };
 
 a();
