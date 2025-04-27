@@ -1,96 +1,181 @@
 /* eslint-disable no-unused-vars */
-const {
-  Connection,
-  sendAndConfirmRawTransaction,
-  PublicKey,
-  Keypair,
-} = require("@solana/web3.js");
 const bs58 = require("bs58");
 const axios = require("axios");
-const { LAMPORTS_PER_SOL } = require("@solana/web3.js");
-const connection = new Connection(
-  "https://api.mainnet-beta.solana.com",
-  "confirmed"
-);
 require("dotenv").config();
+const {
+  Connection,
+  PublicKey,
+  Keypair,
+  LAMPORTS_PER_SOL,
+  Transaction,
+} = require("@solana/web3.js");
+// === Настройки ===
+const KEY = new PublicKey(process.env.PUBLIC); // адрес кошелька, с которого будем отправлять транзакции
 
-const KEY = new PublicKey(process.env.PUBLIC);
+const RPC_ENDPOINT = "https://api.mainnet-beta.solana.com"; // Можно подключить свой RPC для скорости
+const connection = new Connection(RPC_ENDPOINT);
+// const wallet = Keypair.fromSecretKey(KEY); // обязательно свой Keypair вставить сюда
+const JUPITER_QUOTE_URL = "https://quote-api.jup.ag/v6/quote";
+const JUPITER_SWAP_URL = "https://quote-api.jup.ag/v6/swap";
 
-const tokenMintAddress = new PublicKey(
-  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-); // Адрес токена USDC
+const FIXED_SOL_AMOUNT = 0.2 * LAMPORTS_PER_SOL; // 0.2 SOL
+
+const SOL_MINT = "So11111111111111111111111111111111111111112"; // SOL "токен"
+
+const handleNewUserSwapEvent = async (obj) => {
+  obj && console.log(obj);
+
+  // try {
+  //   if (change > 0) {
+  //     console.log(`[+] Пользователь купил токен: ${mint}. Покупаю...`);
+  //     await buyToken(mint);
+  //   } else if (change < 0) {
+  //     console.log(`[-] Пользователь продал токен: ${mint}. Продаю...`);
+  //     await sellToken(mint);
+  //   }
+  // } catch (error) {
+  //   console.error("Ошибка в обработчике события:", error);
+  // }
+};
+
+// const buyToken = async (mintAddress) => {
+//   try {
+//     console.log("Ищу маршрут для покупки токена...");
+
+//     const quoteResponse = await fetch(
+//       `${JUPITER_QUOTE_URL}?inputMint=${SOL_MINT}&outputMint=${mintAddress}&amount=${FIXED_SOL_AMOUNT}&slippageBps=100`
+//     );
+//     const quoteData = await quoteResponse.json();
+
+//     if (!quoteData.routes || quoteData.routes.length === 0) {
+//       console.error("Маршрут не найден для покупки токена.");
+//       return;
+//     }
+
+//     const bestRoute = quoteData.routes[0];
+
+//     const swapResponse = await fetch(JUPITER_SWAP_URL, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         route: bestRoute,
+//         userPublicKey: wallet.publicKey.toString(),
+//         wrapUnwrapSOL: true,
+//         feeAccount: null,
+//         asLegacyTransaction: true,
+//       }),
+//     });
+
+//     const swapData = await swapResponse.json();
+
+//     const swapTransactionBuf = Buffer.from(swapData.swapTransaction, "base64");
+//     const transaction = Transaction.from(swapTransactionBuf);
+
+//     transaction.sign(wallet);
+
+//     const rawTransaction = transaction.serialize();
+//     const txid = await connection.sendRawTransaction(rawTransaction, {
+//       skipPreflight: true,
+//     });
+
+//     console.log("Свап успешный! Транзакция:", txid);
+//   } catch (error) {
+//     console.error("Ошибка при покупке токена:", error);
+//   }
+// };
+
+// const sellToken = async (mintAddress) => {
+//   try {
+//     console.log("Проверяю баланс токена...");
+
+//     const tokenAccount = await findTokenAccount(mintAddress);
+//     if (!tokenAccount) {
+//       console.log("Нет токена на балансе. Пропускаем продажу.");
+//       return;
+//     }
+
+//     const tokenBalanceLamports = await getTokenBalance(tokenAccount);
+//     if (tokenBalanceLamports === 0) {
+//       console.log("Баланс токена равен 0. Пропускаем продажу.");
+//       return;
+//     }
+
+//     console.log("Ищу маршрут для продажи токена...");
+
+//     const quoteResponse = await fetch(
+//       `${JUPITER_QUOTE_URL}?inputMint=${mintAddress}&outputMint=${SOL_MINT}&amount=${tokenBalanceLamports}&slippageBps=100`
+//     );
+//     const quoteData = await quoteResponse.json();
+
+//     if (!quoteData.routes || quoteData.routes.length === 0) {
+//       console.error("Маршрут не найден для продажи токена.");
+//       return;
+//     }
+
+//     const bestRoute = quoteData.routes[0];
+
+//     const swapResponse = await fetch(JUPITER_SWAP_URL, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         route: bestRoute,
+//         userPublicKey: wallet.publicKey.toString(),
+//         wrapUnwrapSOL: true,
+//         feeAccount: null,
+//         asLegacyTransaction: true,
+//       }),
+//     });
+
+//     const swapData = await swapResponse.json();
+
+//     const swapTransactionBuf = Buffer.from(swapData.swapTransaction, "base64");
+//     const transaction = Transaction.from(swapTransactionBuf);
+
+//     transaction.sign(wallet);
+
+//     const rawTransaction = transaction.serialize();
+//     const txid = await connection.sendRawTransaction(rawTransaction, {
+//       skipPreflight: true,
+//     });
+
+//     console.log("Продажа успешная! Транзакция:", txid);
+//   } catch (error) {
+//     console.error("Ошибка при продаже токена:", error);
+//   }
+// };
+
+// const findTokenAccount = async (mintAddress) => {
+//   const accounts = await connection.getParsedTokenAccountsByOwner(
+//     wallet.publicKey,
+//     {
+//       mint: new PublicKey(mintAddress),
+//     }
+//   );
+
+//   if (accounts.value.length === 0) return null;
+
+//   return accounts.value[0].pubkey;
+// };
+
+// const getTokenBalance = async (tokenAccountPubkey) => {
+//   const accountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
+//   const parsed = accountInfo.value?.data?.parsed;
+//   if (!parsed) return 0;
+
+//   return parsed.info.tokenAmount.amount;
+// };
+
+// const tokenMintAddress = new PublicKey(
+//   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+// ); // Адрес токена USDC
 
 const a = async () => {
-  // const solBalanceLamports = await connection.getBalance(KEY);
-  // const solBalance = solBalanceLamports / LAMPORTS_PER_SOL;
-  // console.log(`Баланс SOL: ${solBalance} SOL`);
-  // const tokenAccounts = await connection.getTokenAccountsByOwner(
-  //   process.env.PUBLIC,
-  //   { mint: tokenMintAddress }
-  // );
-  // if (tokenAccounts.value.length > 0) {
-  //   const usdcAccount = tokenAccounts.value[0];
-  //   const balance = usdcAccount.account.data.parsed.info.tokenAmount.uiAmount;
-  //   console.log(`Баланс USDC: ${balance}`);
-  // } else {
-  //   console.log("Нет аккаунтов для USDC на кошельке.");
-  // }
+  const solBalanceLamports = await connection.getBalance(KEY);
+  const solBalance = solBalanceLamports / LAMPORTS_PER_SOL;
+  console.log(`Баланс SOL: ${solBalance} SOL`);
 };
 
 a();
 
-// // RPC-подключение
-
-// // // Адреса токенов (пример: USDC -> SOL)
-// const inputMint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // USDC
-// const outputMint = "So11111111111111111111111111111111111111112"; // SOL
-// const amount = 1000000; // 1 USDC (в минимальных единицах)
-
-// async function getQuote() {
-//   const res = await axios.get("https://quote-api.jup.ag/v6/quote", {
-//     params: {
-//       inputMint,
-//       outputMint,
-//       amount,
-//       slippageBps: 100, // 0.5% проскальзывание
-//     },
-//   });
-//   return res.data;
-// }
-
-// async function getSwapTransaction(route) {
-//   const res = await axios.post("https://quote-api.jup.ag/v6/swap", {
-//     route,
-//     userPublicKey: keypair.publicKey.toBase58(),
-//     wrapUnwrapSOL: true,
-//     feeAccount: null,
-//   });
-//   return res.data.swapTransaction;
-// }
-
-// async function main() {
-//   console.log("🔍 Получаем quote...");
-//   const { data: routes } = await getQuote();
-//   if (!routes || routes.length === 0) {
-//     console.error("Не удалось найти маршруты для обмена.");
-//     return;
-//   }
-//   const bestRoute = routes[0];
-//   console.log("✅ Лучший маршрут найден.");
-
-//   console.log("📦 Получаем swap транзакцию...");
-//   const txBase64 = await getSwapTransaction(bestRoute);
-//   const txBuffer = Buffer.from(txBase64, "base64");
-//   const transaction = await connection.deserializeTransaction(txBuffer);
-
-//   transaction.partialSign(keypair); // подписываем
-
-//   // //   console.log("🚀 Отправляем транзакцию...");
-//   const rawTx = transaction.serialize();
-//   const txid = await connection.sendRawTransaction(rawTx, {
-//     skipPreflight: false,
-//   });
-//   console.log("✅ Транзакция отправлена:", txid);
-// }
-
 module.exports = a;
+module.exports = handleNewUserSwapEvent;

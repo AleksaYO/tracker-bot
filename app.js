@@ -3,6 +3,7 @@ const logger = require("morgan");
 const cors = require("cors");
 require("dotenv").config();
 const { Connection, PublicKey } = require("@solana/web3.js");
+const handleNewUserSwapEvent = require("./swap");
 
 const connection = new Connection(
   "https://rpc.helius.xyz/?api-key=9ebfc919-bdf9-432a-8aac-89f227c8874f",
@@ -10,7 +11,7 @@ const connection = new Connection(
 );
 
 const userPublicKey = new PublicKey(
-  "Kt2YZRswwvdwHbFXaGx7WsP3Yq7ryeZa9kPACjkditC"
+  "3BgV8pMZukCSX6TnAhzfR7Zb8X6Wmdc4E5YiByA4eM9t"
 );
 
 let lastKnownSignature = null;
@@ -48,7 +49,7 @@ const getParsedTransaction = async (signature) => {
   const userChanges = res.filter(
     (change) => change.owner === userPublicKey.toBase58()
   );
-  console.log(userChanges);
+  await handleNewUserSwapEvent(...userChanges);
 };
 
 const parseTokenBalances = async (meta) => {
