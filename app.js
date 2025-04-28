@@ -11,7 +11,7 @@ const connection = new Connection(
 );
 
 const userPublicKey = new PublicKey(
-  "MARsE3ZARQm7iu4hWtnGf9ZHWV3nbsygWqVySyFhqKQ"
+  "AhpyzAnNFWDQq17hbCZoRwtun1TCZ46aAv1DZGQz4w5V"
 );
 
 let lastKnownSignature = null;
@@ -49,7 +49,11 @@ const getParsedTransaction = async (signature) => {
   const userChanges = res.filter(
     (change) => change.owner === userPublicKey.toBase58()
   );
-  await handleNewUserSwapEvent(...userChanges);
+  if (userChanges && userChanges.length > 0) {
+    await Promise.all(
+      userChanges.map((change) => handleNewUserSwapEvent(change))
+    );
+  }
 };
 
 const parseTokenBalances = async (meta) => {
