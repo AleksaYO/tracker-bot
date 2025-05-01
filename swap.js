@@ -50,18 +50,20 @@ const handleNewUserSwapEvent = async (obj) => {
       return;
     }
 
-    const eventKey = `${obj.mint}-${obj.change > 0 ? "buy" : "sell"}`;
+    const token = obj.mint;
     const now = Date.now();
-    if (recentEvents.has(eventKey) && now - recentEvents.get(eventKey) < 5000) {
-      console.log("Повторное событие, игнорируем.");
+    const key = `${token}-${obj.change > 0 ? "buy" : "sell"}`;
+
+    if (recentEvents.has(key) && now - recentEvents.get(key) < 10000) {
+      console.log("⏳ Уже обработано недавно, пропускаем.");
       return;
     }
-
-    recentEvents.set(eventKey, now);
-    if (obj?.change > 0) {
+    recentEvents.set(key, now);
+    // obj?.change > 0
+    if (obj?.change > 0 && Math.abs(obj?.change) > 1000) {
       console.log(`[+] Пользователь купил токен: ${obj?.mint}. Покупаю...`);
       await buyToken(obj?.mint, wallet);
-    } else if (obj?.change < 0) {
+    } else if (obj?.change < 0 && Math.abs(obj?.change) > 1000) {
       console.log(`[-] Пользователь продал токен: ${obj?.mint}. Продаю...`);
       await sellToken(obj?.mint, wallet);
     }

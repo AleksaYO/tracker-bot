@@ -9,11 +9,6 @@ const connection = new Connection(
   "https://rpc.helius.xyz/?api-key=9ebfc919-bdf9-432a-8aac-89f227c8874f",
   "confirmed"
 );
-// W1:EVM: 0x6d53d4ab50a4036b3e5564037e75df23a8f64f28: 0x22a82b0929b21d83db0d2ab5e8235e4b334a0b4bd670aca064ee2a37c34b69b1
-
-// W2:SOLANA: 6nLUdfY3hJbRUKzRe8LpijMh1mtse3gg1t7WbBr4WQrM: 375H4iVU6EqVZoQRieWBTqyThsXgBv977cxcwUJwkbVgcSt1uVhWAoPV958DW2KNM8m8a1J6zyid2igAE93xoiU1
-
-// W3:TRON: TBjK3LdbG9E3MVxSoobLgfRJi9TFAKdijq: 4b5c1d47e065d1d583b7db9850de0bb9d835b818078620e8686290db50833618
 
 const userPublicKey = new PublicKey(
   "5kdb2efMD27uABLWcg6J7XKtWov2tj8PEN1JhwK84FUW"
