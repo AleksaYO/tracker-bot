@@ -1,11 +1,12 @@
 const app = require("./app");
-const a = require("./swap");
+const start = require("./swap");
 
 const { PORT } = process.env;
 
 app.listen(PORT, () => {
-  // main().catch(console.error);
-  a();
+  start().catch((error) => {
+    console.error("Ошибка при запуске:", error);
+  });
 
   console.log(`Server running. Use our API on port: ${PORT}`);
 });

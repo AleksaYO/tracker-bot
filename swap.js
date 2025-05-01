@@ -11,20 +11,18 @@ const {
   Transaction,
   SendTransactionError,
 } = require("@solana/web3.js");
+const recentEvents = new Map();
 const ed25519 = require("ed25519-hd-key");
-// === Настройки ===
-const _PHANTOM = new PublicKey(process.env.PHANTOM); // адрес кошелька, с которого будем отправлять транзакции
-const RPC_ENDPOINT = "https://api.mainnet-beta.solana.com"; // Можно подключить свой RPC для скорости
+const _PHANTOM = new PublicKey(process.env.PHANTOM);
+const sendTelegramMessage = require("./telega");
+const RPC_ENDPOINT = `https://rpc.helius.xyz/?api-key=${process.env.HELIUS}`;
 const connection = new Connection(RPC_ENDPOINT);
 const JUPITER_QUOTE_URL = "https://quote-api.jup.ag/v6/quote";
 const JUPITER_SWAP_URL = "https://quote-api.jup.ag/v6/swap";
-
-const FIXED_SOL_AMOUNT = 0.2 * LAMPORTS_PER_SOL; // 0.2 SOL
-
+const FIXED_SOL_AMOUNT = 0.1 * LAMPORTS_PER_SOL; // 0.2 SOL
 const SOL_MINT = "So11111111111111111111111111111111111111112";
-const expMint = "JB2wezZLdzWfnaCfHxLg193RS3Rh51ThiXxEDWQDpump";
 
-async function getPhantomKeypairFromMnemonic(mnemonic) {
+const getPhantomKeypairFromMnemonic = async (mnemonic) => {
   if (!bip39.validateMnemonic(mnemonic)) {
     throw new Error("Неверная сид-фраза");
   }
@@ -38,7 +36,7 @@ async function getPhantomKeypairFromMnemonic(mnemonic) {
   const keypair = Keypair.fromSeed(derivedSeed);
 
   return keypair;
-}
+};
 
 const handleNewUserSwapEvent = async (obj) => {
   const wallet = await getPhantomKeypairFromMnemonic(process.env.MNEMONIC);
@@ -51,11 +49,20 @@ const handleNewUserSwapEvent = async (obj) => {
       console.error("Получен некорректный объект события:", obj);
       return;
     }
+
+    const eventKey = `${obj.mint}-${obj.change > 0 ? "buy" : "sell"}`;
+    const now = Date.now();
+    if (recentEvents.has(eventKey) && now - recentEvents.get(eventKey) < 5000) {
+      console.log("Повторное событие, игнорируем.");
+      return;
+    }
+
+    recentEvents.set(eventKey, now);
     if (obj?.change > 0) {
       console.log(`[+] Пользователь купил токен: ${obj?.mint}. Покупаю...`);
       await buyToken(obj?.mint, wallet);
     } else if (obj?.change < 0) {
-      console.log(`[-] Пользователь продал токен: ${obj?.mintmint}. Продаю...`);
+      console.log(`[-] Пользователь продал токен: ${obj?.mint}. Продаю...`);
       await sellToken(obj?.mint, wallet);
     }
   } catch (error) {
@@ -64,60 +71,61 @@ const handleNewUserSwapEvent = async (obj) => {
 };
 
 const buyToken = async (mintAddress, wallet) => {
-  // try {
-  //   console.log("Проверяю баланс перед покупкой...");
-  //   const balance = await connection.getBalance(wallet.publicKey);
-  //   if (balance < FIXED_SOL_AMOUNT) {
-  //     console.error("Недостаточно SOL для выполнения свапа.");
-  //     return;
-  //   }
-  //   console.log("Ищу маршрут для покупки токена...");
-  //   const quoteResponse = await axios.get(
-  //     `${JUPITER_QUOTE_URL}?inputMint=${SOL_MINT}&outputMint=${expMint}&amount=${FIXED_SOL_AMOUNT}&slippageBps=1000`
-  //   );
-  //   const quoteData = quoteResponse.data;
-  //   if (!quoteData.routePlan || quoteData.routePlan.length === 0) {
-  //     console.error(
-  //       `[!] Невозможно купить токен ${expMint}: маршрут обмена не найден.`
-  //     );
-  //     return;
-  //   }
-  //   console.log("Маршрут найден. Отправляю запрос на свап...");
-  //   const swapResponse = await axios.post(JUPITER_SWAP_URL, {
-  //     quoteResponse: quoteData,
-  //     userPublicKey: wallet.publicKey.toBase58(),
-  //     wrapUnwrapSOL: true,
-  //     asLegacyTransaction: true,
-  //   });
-  //   const swapData = swapResponse.data;
-  //   const swapTransactionBuf = Buffer.from(swapData.swapTransaction, "base64");
-  //   const transaction = Transaction.from(swapTransactionBuf);
-  //   transaction.partialSign(wallet);
-  //   const rawTransaction = transaction.serialize();
-  //   const latestBlockhash = await connection.getLatestBlockhash();
-  //   const txid = await connection.sendRawTransaction(rawTransaction);
-  //   await connection.confirmTransaction(
-  //     {
-  //       signature: txid,
-  //       blockhash: latestBlockhash.blockhash,
-  //       lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-  //     },
-  //     "finalized"
-  //   );
-  //   console.log("✅ Свап успешный! Транзакция:", txid);
-  // } catch (error) {
-  //   console.error("Ошибка при покупке токена:", error);
-  //   if (error instanceof SendTransactionError) {
-  //     console.error("Детали ошибки:", error.message);
-  //     console.error("Логи транзакции:", error.logs); // Выводим логи
-  //   }
-  // }
+  try {
+    console.log("Проверяю баланс перед покупкой...");
+    const balance = await connection.getBalance(wallet.publicKey);
+    if (balance < FIXED_SOL_AMOUNT) {
+      console.error("Недостаточно SOL для выполнения свапа.");
+      return;
+    }
+    console.log("Ищу маршрут для покупки токена...");
+    const quoteResponse = await axios.get(
+      `${JUPITER_QUOTE_URL}?inputMint=${SOL_MINT}&outputMint=${mintAddress}&amount=${FIXED_SOL_AMOUNT}&slippageBps=1000`
+    );
+    const quoteData = quoteResponse.data;
+    if (!quoteData.routePlan || quoteData.routePlan.length === 0) {
+      console.error(
+        `[!] Невозможно купить токен ${mintAddress}: маршрут обмена не найден.`
+      );
+      return;
+    }
+    console.log("Маршрут найден. Отправляю запрос на свап...");
+    const swapResponse = await axios.post(JUPITER_SWAP_URL, {
+      quoteResponse: quoteData,
+      userPublicKey: wallet.publicKey.toBase58(),
+      wrapUnwrapSOL: true,
+      asLegacyTransaction: true,
+    });
+    const swapData = swapResponse.data;
+    const swapTransactionBuf = Buffer.from(swapData.swapTransaction, "base64");
+    const transaction = Transaction.from(swapTransactionBuf);
+    transaction.partialSign(wallet);
+    const rawTransaction = transaction.serialize();
+    const latestBlockhash = await connection.getLatestBlockhash();
+    const txid = await connection.sendRawTransaction(rawTransaction);
+    await connection.confirmTransaction(
+      {
+        signature: txid,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      },
+      "finalized"
+    );
+    await sendTelegramMessage("➕ Свап успешный! Баланс:", wallet.publicKey);
+    console.log("✅ Свап успешный! Транзакция:", txid);
+  } catch (error) {
+    console.error("Ошибка при покупке токена:", error);
+    if (error instanceof SendTransactionError) {
+      console.error("Детали ошибки:", error.message);
+      console.error("Логи транзакции:", error.logs);
+    }
+  }
 };
 
 const sellToken = async (mintAddress, wallet) => {
   try {
     console.log("Проверяю баланс токена...");
-    const tokenAccount = await findTokenAccount(expMint, wallet);
+    const tokenAccount = await findTokenAccount(mintAddress, wallet);
     if (!tokenAccount) {
       console.log("Нет токена на балансе. Пропускаем продажу.");
       return;
@@ -129,7 +137,7 @@ const sellToken = async (mintAddress, wallet) => {
     }
     console.log("Ищу маршрут для продажи токена...");
     const quoteResponse = await axios.get(
-      `${JUPITER_QUOTE_URL}?inputMint=${expMint}&outputMint=${SOL_MINT}&amount=${tokenBalanceLamports}&slippageBps=1000`
+      `${JUPITER_QUOTE_URL}?inputMint=${mintAddress}&outputMint=${SOL_MINT}&amount=${tokenBalanceLamports}&slippageBps=1000`
     );
     const quoteData = quoteResponse.data;
     if (!quoteData.routePlan || quoteData.routePlan.length === 0) {
@@ -158,6 +166,7 @@ const sellToken = async (mintAddress, wallet) => {
       },
       "finalized"
     );
+    await sendTelegramMessage("➖ Продажа успешна! Баланс:", wallet.publicKey);
     console.log("✅ Продажа успешна! Транзакция:", txid);
   } catch (error) {
     console.error("❌ Ошибка при продаже токена:", error);
@@ -166,50 +175,6 @@ const sellToken = async (mintAddress, wallet) => {
       console.error("Логи транзакции:", error.logs);
     }
   }
-  // try {
-  //   console.log("Проверяю баланс токена...");
-  //   const tokenAccount = await findTokenAccount(mintAddress, wallet);
-  //   if (!tokenAccount) {
-  //     console.log("Нет токена на балансе. Пропускаем продажу.");
-  //     return;
-  //   }
-  //   const tokenBalanceLamports = await getTokenBalance(tokenAccount);
-  //   if (tokenBalanceLamports === 0) {
-  //     console.log("Баланс токена равен 0. Пропускаем продажу.");
-  //     return;
-  //   }
-  //   console.log("Ищу маршрут для продажи токена...");
-  //   const quoteResponse = await axios.get(
-  //     `${JUPITER_QUOTE_URL}?inputMint=${mintAddress}&outputMint=${SOL_MINT}&amount=${tokenBalanceLamports}&slippageBps=100`
-  //   );
-  //   const quoteData = await quoteResponse.data;
-  //   if (!quoteData.routes || quoteData.routes.length === 0) {
-  //     console.error("Маршрут не найден для продажи токена.");
-  //     return;
-  //   }
-  //   const bestRoute = quoteData.routes[0];
-  //   const swapResponse = await axios.post(JUPITER_SWAP_URL, {
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({
-  //       route: bestRoute,
-  //       userPublicKey: wallet.publicKey.toString(),
-  //       wrapUnwrapSOL: true,
-  //       feeAccount: null,
-  //       asLegacyTransaction: true,
-  //     }),
-  //   });
-  //   const swapData = await swapResponse.json();
-  //   const swapTransactionBuf = Buffer.from(swapData.swapTransaction, "base64");
-  //   const transaction = Transaction.from(swapTransactionBuf);
-  //   transaction.sign(wallet);
-  //   const rawTransaction = transaction.serialize();
-  //   const txid = await connection.sendRawTransaction(rawTransaction, {
-  //     skipPreflight: true,
-  //   });
-  //   console.log("Продажа успешная! Транзакция:", txid);
-  // } catch (error) {
-  //   console.error("Ошибка при продаже токена:", error);
-  // }
 };
 
 const findTokenAccount = async (mintAddress, wallet) => {
@@ -230,12 +195,7 @@ const getTokenBalance = async (tokenAccountPubkey) => {
   return parsed.info.tokenAmount.amount;
 };
 
-// const tokenMintAddress = new PublicKey(
-//   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-// ); // Адрес токена USDC
-
-const a = async () => {
-  // Проверяем, что KEY (публичный ключ из .env.PHANTOM) инициализирован
+const start = async () => {
   if (!_PHANTOM) {
     console.error("Публичный ключ (KEY) не загружен из .env.PHANTOM.");
     return;
@@ -251,5 +211,5 @@ const a = async () => {
   }
 };
 
-module.exports = a;
+module.exports = start;
 module.exports = handleNewUserSwapEvent;
