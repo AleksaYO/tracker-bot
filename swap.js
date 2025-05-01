@@ -43,16 +43,16 @@ const handleNewUserSwapEvent = async (obj) => {
   try {
     if (
       !obj ||
-      typeof obj.mint === "undefined" ||
-      typeof obj.change === "undefined"
+      typeof obj?.mint === "undefined" ||
+      typeof obj?.change === "undefined"
     ) {
       console.error("Получен некорректный объект события:", obj);
       return;
     }
 
-    const token = obj.mint;
+    const token = obj?.mint;
     const now = Date.now();
-    const key = `${token}-${obj.change > 0 ? "buy" : "sell"}`;
+    const key = `${token}-${obj?.change > 0 ? "buy" : "sell"}`;
 
     if (recentEvents.has(key) && now - recentEvents.get(key) < 10000) {
       console.log("⏳ Уже обработано недавно, пропускаем.");

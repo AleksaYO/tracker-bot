@@ -5,21 +5,18 @@ require("dotenv").config();
 const { Connection, PublicKey } = require("@solana/web3.js");
 const handleNewUserSwapEvent = require("./swap");
 
+if (process.env.POWER !== "true") {
+  console.log("⛔️ Бот отключён через ⛔️");
+  process.exit(0);
+}
+
 const connection = new Connection(
   "https://rpc.helius.xyz/?api-key=9ebfc919-bdf9-432a-8aac-89f227c8874f",
   "confirmed"
 );
 
-const userPublicKey = new PublicKey(
-  "5byQnWrumgPTtJBY9K6uqYYagSAvE4wMBsqeWeqaSz8P"
-);
-// 29ZEC7EHQZ2Koym7Z47Ek84kFzhR5TkeTwcsGzhZR2yH
-// GJLxzKb5JW6PQ7tfCuC7zEdD69AtqWAQ8RVPCGR5gLxF
-// 5byQnWrumgPTtJBY9K6uqYYagSAvE4wMBsqeWeqaSz8P
-// Bxb3z95vxnct6yvk5PYaTLPQuXKVfXYiH2qVeqcHHQi5
-// 9r1F4YmadN2BE9KXyhJUboLqQ4wxoJyaMxj7FAHBvVC9
+const userPublicKey = new PublicKey(process.env.SCAN_WALLET);
 
-// 5kdb2efMD27uABLWcg6J7XKtWov2tj8PEN1JhwK84FUW
 let lastKnownSignature = null;
 
 const pollTransactions = async () => {
