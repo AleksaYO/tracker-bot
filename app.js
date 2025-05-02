@@ -63,24 +63,59 @@ const parseTokenBalances = async (meta) => {
   const pre = meta.preTokenBalances || [];
   const post = meta.postTokenBalances || [];
   const result = [];
-  for (let i = 0; i < post.length; i++) {
-    const preBalance = pre[i]?.uiTokenAmount?.amount || "0";
-    const postBalance = post[i]?.uiTokenAmount?.amount || "0";
-    const mint = post[i]?.mint;
-    const owner = post[i]?.owner;
-    const decimals = post[i]?.uiTokenAmount?.decimals || 0;
-    const preVal = Number(preBalance) / Math.pow(10, decimals);
-    const postVal = Number(postBalance) / Math.pow(10, decimals);
-    const diff = postVal - preVal;
+
+  const balanceMap = new Map();
+
+  for (const entry of pre) {
+    const key = `${entry.mint}-${entry.owner}`;
+    const amount = Number(entry.uiTokenAmount.amount);
+    const decimals = entry.uiTokenAmount.decimals || 0;
+    balanceMap.set(key, {
+      pre: amount / Math.pow(10, decimals),
+      decimals,
+    });
+  }
+
+  for (const entry of post) {
+    const key = `${entry.mint}-${entry.owner}`;
+    const postAmount = Number(entry.uiTokenAmount.amount);
+    const decimals = entry.uiTokenAmount.decimals || 0;
+    const preData = balanceMap.get(key);
+    const preAmount = preData ? preData.pre : 0;
+
+    const diff = postAmount / Math.pow(10, decimals) - preAmount;
+
     if (diff !== 0) {
       result.push({
-        mint,
-        owner,
+        mint: entry.mint,
+        owner: entry.owner,
         change: diff,
       });
     }
   }
+
   return result;
+  // const pre = meta.preTokenBalances || [];
+  // const post = meta.postTokenBalances || [];
+  // const result = [];
+  // for (let i = 0; i < post.length; i++) {
+  //   const preBalance = pre[i]?.uiTokenAmount?.amount || "0";
+  //   const postBalance = post[i]?.uiTokenAmount?.amount || "0";
+  //   const mint = post[i]?.mint;
+  //   const owner = post[i]?.owner;
+  //   const decimals = post[i]?.uiTokenAmount?.decimals || 0;
+  //   const preVal = Number(preBalance) / Math.pow(10, decimals);
+  //   const postVal = Number(postBalance) / Math.pow(10, decimals);
+  //   const diff = postVal - preVal;
+  //   if (diff !== 0) {
+  //     result.push({
+  //       mint,
+  //       owner,
+  //       change: diff,
+  //     });
+  //   }
+  // }
+  // return result;
 };
 
 const app = express();
@@ -92,6 +127,32 @@ app.use(cors());
 app.use(express.json());
 
 // app.use("/api/", router);
+
+// app.post("/helius-webhook", async (req, res) => {
+//   try {
+//     const webhookEvent = req.body;
+
+//     if (webhookEvent.type !== "SWAP") {
+//       return res.status(200).send("Пропускаем не-SWAP событие");
+//     }
+
+//     const userChanges = await parseTokenBalances(
+//       webhookEvent?.data?.transaction?.meta
+//     );
+
+//     const userPublicKey = process.env.SCAN_WALLET;
+
+//     const changes = userChanges.filter(
+//       (change) => change.owner === userPublicKey
+//     );
+//     await Promise.all(changes.map((change) => handleNewUserSwapEvent(change)));
+
+//     res.status(200).send("Событие обработано");
+//   } catch (err) {
+//     console.error("Ошибка обработки webhook:", err);
+//     res.status(500).send("Ошибка");
+//   }
+// });
 
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
