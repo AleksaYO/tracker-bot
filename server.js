@@ -1,5 +1,5 @@
 const app = require("./app");
-const start = require("./swap");
+const { start } = require("./swap");
 
 const { PORT } = process.env;
 

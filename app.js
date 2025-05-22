@@ -3,7 +3,8 @@ const logger = require("morgan");
 const cors = require("cors");
 require("dotenv").config();
 const { Connection, PublicKey } = require("@solana/web3.js");
-const handleNewUserSwapEvent = require("./swap");
+const { handleNewUserSwapEvent } = require("./swap");
+const axios = require("axios");
 
 if (process.env.POWER !== "true") {
   console.log("⛔️ Бот отключён через ⛔️");
@@ -11,94 +12,116 @@ if (process.env.POWER !== "true") {
 }
 
 const connection = new Connection(
-  "https://rpc.helius.xyz/?api-key=9ebfc919-bdf9-432a-8aac-89f227c8874f",
+  `https://rpc.helius.xyz/?api-key=${process.env.HELIUS}`,
   "confirmed"
 );
 
 const userPublicKey = new PublicKey(process.env.SCAN_WALLET);
-
 let lastKnownSignature = null;
 
 const pollTransactions = async () => {
   try {
-    const signatures = await connection.getSignaturesForAddress(userPublicKey, {
-      limit: 1,
-    });
+    // Используем Enhanced Transactions API для получения последних транзакций
+    const response = await axios.get(
+      `https://api.helius.xyz/v0/addresses/${userPublicKey.toBase58()}/transactions?api-key=${
+        process.env.HELIUS
+      }&commitment=confirmed&limit=1`
+    );
 
-    if (signatures.length > 0) {
-      const latestSignature = signatures[0].signature;
+    if (response.data && response.data.length > 0) {
+      const latestTx = response.data[0];
+      const latestSignature = latestTx.signature;
 
       if (latestSignature !== lastKnownSignature) {
         lastKnownSignature = latestSignature;
-        getParsedTransaction(latestSignature);
+        await processTransaction(latestTx);
       }
     }
   } catch (err) {
     console.error("Ошибка при опросе транзакций:", err);
   }
 
-  // Опрос каждые 3 секунды вместо 1
   setTimeout(pollTransactions, 3000);
+};
+
+const processTransaction = async (tx) => {
+  try {
+    console.log("Полная транзакция:", JSON.stringify(tx, null, 2));
+
+    // Список известных DEX'ов и агрегаторов
+    const knownDexes = [
+      "JUPITER",
+      "OKX",
+      "PUMP_FUN",
+      "PUMP_AMM",
+      "RAYDIUM",
+      "ORCA",
+      "SERUM",
+    ];
+
+    // Проверяем, что это SWAP транзакция от известного DEX'а
+    if (!tx.type || tx.type !== "SWAP" || !knownDexes.includes(tx.source)) {
+      console.log(
+        `Пропускаем транзакцию - не является свапом (тип: ${tx.type}, источник: ${tx.source})`
+      );
+      return;
+    }
+
+    // Добавляем специальное логирование для PUMP транзакций
+    if (tx.source === "PUMP_FUN" || tx.source === "PUMP_AMM") {
+      console.log(`Обнаружена транзакция ${tx.source}:`, {
+        signature: tx.signature,
+        type: tx.type,
+        success: tx.success,
+        tokenTransfers: tx.tokenTransfers?.length || 0,
+      });
+    }
+
+    // Проверяем, что транзакция успешна
+    if (tx.success === false) {
+      console.log("Пропускаем транзакцию - содержит ошибку");
+      return;
+    }
+
+    // Получаем информацию о токенах из транзакции
+    const tokenTransfers = tx.tokenTransfers || [];
+
+    // Фильтруем только изменения баланса для отслеживаемого кошелька
+    const userChanges = tokenTransfers.filter(
+      (transfer) =>
+        transfer.fromUserAccount === userPublicKey.toBase58() ||
+        transfer.toUserAccount === userPublicKey.toBase58()
+    );
+
+    if (userChanges.length === 0) {
+      console.log(
+        "Пропускаем транзакцию - нет изменений баланса у отслеживаемого кошелька"
+      );
+      return;
+    }
+
+    // Преобразуем данные в формат, ожидаемый handleNewUserSwapEvent
+    const changes = userChanges.map((transfer) => ({
+      mint: transfer?.mint,
+      owner: userPublicKey.toBase58(),
+      change:
+        transfer.fromUserAccount === userPublicKey.toBase58()
+          ? -Number(transfer.tokenAmount)
+          : Number(transfer.tokenAmount),
+    }));
+
+    // Обрабатываем каждое изменение
+    for (const change of changes) {
+      await handleNewUserSwapEvent(change);
+    }
+  } catch (error) {
+    console.error("Ошибка при обработке транзакции:", error);
+  }
 };
 
 pollTransactions();
 
-const getParsedTransaction = async (signature) => {
-  const txDetails = await connection.getParsedTransaction(signature, {
-    commitment: "confirmed",
-    maxSupportedTransactionVersion: 0,
-  });
-  const res = await parseTokenBalances(txDetails.meta).then((data) => data);
-  const userChanges = res.filter(
-    (change) => change.owner === userPublicKey.toBase58()
-  );
-  if (userChanges && userChanges.length > 0) {
-    await Promise.all(
-      userChanges.map((change) => handleNewUserSwapEvent(change))
-    );
-  }
-};
-
-const parseTokenBalances = async (meta) => {
-  const pre = meta.preTokenBalances || [];
-  const post = meta.postTokenBalances || [];
-  const result = [];
-
-  const balanceMap = new Map();
-
-  for (const entry of pre) {
-    const key = `${entry.mint}-${entry.owner}`;
-    const amount = Number(entry.uiTokenAmount.amount);
-    const decimals = entry.uiTokenAmount.decimals || 0;
-    balanceMap.set(key, {
-      pre: amount / Math.pow(10, decimals),
-      decimals,
-    });
-  }
-
-  for (const entry of post) {
-    const key = `${entry.mint}-${entry.owner}`;
-    const postAmount = Number(entry.uiTokenAmount.amount);
-    const decimals = entry.uiTokenAmount.decimals || 0;
-    const preData = balanceMap.get(key);
-    const preAmount = preData ? preData.pre : 0;
-
-    const diff = postAmount / Math.pow(10, decimals) - preAmount;
-
-    if (diff !== 0) {
-      result.push({
-        mint: entry.mint,
-        owner: entry.owner,
-        change: diff,
-      });
-    }
-  }
-
-  return result;
-};
-
 const app = express();
-
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
 
 app.use(logger(formatsLogger));
